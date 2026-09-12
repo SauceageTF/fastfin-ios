@@ -1,0 +1,85 @@
+# Builds an UNSIGNED iOS .ipa on GitHub's macOS runners so it can be sideloaded
+# with AltStore / Sideloadly using a free Apple ID -- no Mac, no paid developer
+# account. Run it from the Actions tab ("Run workflow").
+#
+#   dev-client (default)  Debug build with expo-dev-client. Install once, then
+#                         `npx expo start --dev-client` on your PC gives live
+#                         reload like Expo Go, but with FastFin's own Info.plist
+#                         (Picture in Picture, background audio, http:// hosts).
+#                         Rebuild only when native dependencies change.
+#   release               Self-contained Release build with the JS embedded.
+#                         No dev server needed; rebuild for every code change.
+name: iOS sideload build
+
+on:
+  # Pushing a change to this file also builds the default (dev-client) variant.
+  push:
+    branches: [master, main]
+    paths: [".github/workflows/ios-sideload.yml"]
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Build variant
+        type: choice
+        default: dev-client
+        options:
+          - dev-client
+          - release
+
+jobs:
+  build:
+    # Expo SDK 57 needs Xcode 26.4+; the macos-26 image ships 26.6 by default.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      SCHEME: FastFin
+      VARIANT: ${{ inputs.variant || 'dev-client' }}
+      CONFIGURATION: ${{ inputs.variant == 'release' && 'Release' || 'Debug' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Install JS dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate the native iOS project
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -workspace "ios/$SCHEME.xcworkspace" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            -quiet \
+            build
+
+      - name: Package .ipa
+        run: |
+          APP="build/Build/Products/$CONFIGURATION-iphoneos/$SCHEME.app"
+          test -d "$APP" || { echo "App bundle not found at $APP"; ls -R build/Build/Products | head -50; exit 1; }
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qr "FastFin-${{ env.VARIANT }}.ipa" Payload
+          ls -la *.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FastFin-${{ env.VARIANT }}-ipa
+          path: FastFin-${{ env.VARIANT }}.ipa
+          retention-days: 14

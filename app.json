@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "FastFin",
+    "slug": "fastfin",
+    "scheme": "fastfin",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.veeha.fastfin",
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "NSLocalNetworkUsageDescription": "FastFin connects to your Jellyfin server on your local network."
+      }
+    },
+    "android": {
+      "package": "com.veeha.fastfin",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0e",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-video",
+        {
+          "supportsPictureInPicture": true
+        }
+      ],
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
+        }
+      ],
+      "expo-splash-screen",
+      "expo-dev-client"
+    ]
+  }
+}
